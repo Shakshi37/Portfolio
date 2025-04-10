@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import CertificateCard from './CertificateCard';
 import { Award } from 'lucide-react';
+import { api } from '../context/AuthContext';
 
 interface Certificate {
   _id: string;
@@ -28,7 +28,7 @@ const Certificates: React.FC<CertificatesProps> = ({ isDarkMode = false }) => {
   useEffect(() => {
     const fetchCertificates = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/certificates');
+        const response = await api.get('/certificates');
         setCertificates(response.data);
         setLoading(false);
       } catch (err) {

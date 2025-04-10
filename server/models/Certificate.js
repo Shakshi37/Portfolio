@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const certificateSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   title: {
     type: String,
     required: true
@@ -36,4 +41,5 @@ const certificateSchema = new mongoose.Schema({
   timestamps: true
 });
 
-export const Certificate = mongoose.model('Certificate', certificateSchema); 
+const Certificate = mongoose.model('Certificate', certificateSchema);
+export default Certificate; 

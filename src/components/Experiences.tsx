@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import ExperienceCard from './ExperienceCard';
 import { Briefcase } from 'lucide-react';
+import { api } from '../context/AuthContext';
 
 interface Experience {
   _id: string;
@@ -30,7 +30,7 @@ const Experiences: React.FC<ExperiencesProps> = ({ isDarkMode = false }) => {
   useEffect(() => {
     const fetchExperiences = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/experiences');
+        const response = await api.get('/experiences');
         setExperiences(response.data);
         setLoading(false);
       } catch (err) {

@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const experienceSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
   title: {
     type: String,
     required: true
@@ -44,4 +49,5 @@ const experienceSchema = new mongoose.Schema({
   timestamps: true
 });
 
-export const Experience = mongoose.model('Experience', experienceSchema); 
+const Experience = mongoose.model('Experience', experienceSchema);
+export default Experience; 

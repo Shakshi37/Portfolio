@@ -1,8 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext, createContext } from 'react';
 import { Menu, Moon, Sun, Github, Linkedin, Mail, Download, Code2, Globe, Database, Terminal } from 'lucide-react';
 import axios from 'axios';
 import Certificates from './components/Certificates';
 import Experiences from './components/Experiences';
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { useAuth, api } from './context/AuthContext';
+import Login from './components/Login';
+import ProtectedRoute from './components/ProtectedRoute';
 
 interface Project {
   _id: string;
@@ -21,8 +25,14 @@ interface Skill {
   items: string[];
 }
 
-function App() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+// Create a context for theme functionality
+interface ThemeContextType {
+  toggleDarkMode: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextType>({ toggleDarkMode: () => {} });
+
+function PortfolioContent({ isDarkMode }: { isDarkMode: boolean }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -38,19 +48,25 @@ function App() {
     type: 'success' | 'error' | null;
     message: string;
   }>({ type: null, message: '' });
+  const { logout } = useAuth();
+  // Get toggleDarkMode function from parent
+  const { toggleDarkMode } = useContext(ThemeContext);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Use the configured API instance that handles authorization
         const [projectsRes, skillsRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/projects'),
-          axios.get('http://localhost:5000/api/skills')
+          api.get('/projects'),
+          api.get('/skills')
         ]);
+        
         setProjects(projectsRes.data);
         setSkills(skillsRes.data);
         setLoading(false);
       } catch (err) {
-        setError('Failed to fetch data');
+        console.error('Error fetching data:', err);
+        setError('Failed to fetch data. Please check the console for more information.');
         setLoading(false);
       }
     };
@@ -61,10 +77,9 @@ function App() {
   const handleDownloadCV = async () => {
     try {
       setDownloading(true);
-      const response = await axios({
-        url: 'http://localhost:5000/api/download-cv',
-        method: 'GET',
-        responseType: 'blob',
+      // Use API instance for authorized requests
+      const response = await api.get('/download-cv', {
+        responseType: 'blob'
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -95,7 +110,8 @@ function App() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/contact', formData);
+      // Use API instance for authorized requests
+      await api.post('/contact', formData);
       setFormStatus({
         type: 'success',
         message: 'Message sent successfully! I will get back to you soon.'
@@ -116,6 +132,32 @@ function App() {
       [name]: value
     }));
   };
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className={`text-xl ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+          {error}
+        </div>
+        <button
+          onClick={logout}
+          className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+        >
+          Logout
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
@@ -138,7 +180,14 @@ function App() {
               <NavLink href="#certificates" isDark={isDarkMode}>Certificates</NavLink>
               <NavLink href="#contact" isDark={isDarkMode}>Contact</NavLink>
               <button
-                onClick={() => setIsDarkMode(!isDarkMode)}
+                onClick={logout}
+                className={`${isDarkMode ? 'text-white hover:bg-gray-700' : 'text-gray-900 hover:bg-gray-100'} px-3 py-2 rounded-md text-sm font-medium`}
+              >
+                Logout
+              </button>
+              {/* Theme toggle button after logout */}
+              <button
+                onClick={toggleDarkMode}
                 className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
               >
                 {isDarkMode ? <Sun className="w-5 h-5 text-white" /> : <Moon className="w-5 h-5" />}
@@ -167,6 +216,24 @@ function App() {
               <MobileNavLink href="#experience" isDark={isDarkMode}>Experience</MobileNavLink>
               <MobileNavLink href="#certificates" isDark={isDarkMode}>Certificates</MobileNavLink>
               <MobileNavLink href="#contact" isDark={isDarkMode}>Contact</MobileNavLink>
+              <button
+                onClick={logout}
+                className="block w-full text-left px-3 py-2 rounded-md text-base font-medium border-t mt-2 pt-2"
+                style={{ color: isDarkMode ? '#fff' : '#374151' }}
+              >
+                Logout
+              </button>
+              {/* Theme toggle for mobile after logout */}
+              <button
+                onClick={toggleDarkMode}
+                className="flex items-center w-full px-3 py-2 text-base font-medium"
+                style={{ color: isDarkMode ? '#fff' : '#374151' }}
+              >
+                {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+                <span className="ml-2">
+                  {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </span>
+              </button>
             </div>
           </div>
         )}
@@ -490,6 +557,49 @@ function App() {
         </div>
       </section>
     </div>
+  );
+}
+
+function App() {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { isAuthenticated, login } = useAuth();
+  const location = useLocation();
+
+  // Toggle dark mode effect
+  useEffect(() => {
+    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
+    setIsDarkMode(savedDarkMode);
+  }, []);
+
+  const toggleDarkMode = () => {
+    const newMode = !isDarkMode;
+    setIsDarkMode(newMode);
+    localStorage.setItem('darkMode', String(newMode));
+  };
+
+  return (
+    <ThemeContext.Provider value={{ toggleDarkMode }}>
+      <div className={isDarkMode ? 'dark' : ''}>
+        {/* Theme toggle button is now handled within the Login component */}
+        <Routes>
+          <Route path="/login" element={
+            isAuthenticated ? 
+              <Navigate to="/" /> : 
+              <Login 
+                onLogin={(token, user) => login(token, user)}
+                isDarkMode={isDarkMode}
+                toggleDarkMode={toggleDarkMode}
+              />
+          } />
+          
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<PortfolioContent isDarkMode={isDarkMode} />} />
+          </Route>
+          
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
+      </div>
+    </ThemeContext.Provider>
   );
 }
 
