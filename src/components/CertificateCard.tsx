@@ -35,7 +35,7 @@ const CertificateCard: React.FC<CertificateCardProps> = ({ certificate, isDarkMo
         <img
           src={certificate.imageUrl}
           alt={certificate.title}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
         />
       </div>
       <div className="p-6">
